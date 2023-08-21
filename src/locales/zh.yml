@@ -1,0 +1,10 @@
+commands:
+  perm:
+    messages:
+      success: 修改成功
+      failure: 修改失败
+      deleted: 已删除
+      unknown-permission: 失败，包含未知的权限
+      permissions: |
+        - {target}:
+        {permissions.join('\n')}
