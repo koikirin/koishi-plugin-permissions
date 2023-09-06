@@ -1,13 +1,6 @@
-import { Command, Context, Dict, Schema } from 'koishi'
-import { Primary } from '@minatojs/core'
+import { Command, Context, Dict, Primary, Schema } from 'koishi'
 
 declare module 'koishi' {
-  namespace Command {
-    interface Config {
-      permissions?: string[]
-      inheritedByParent?: boolean
-    }
-  }
 
   interface Tables {
     permissions: PermissionGroup
@@ -43,21 +36,12 @@ export class Permissions {
 
     function inheritPermissions(command: Command) {
       command[Context.current] = ctx
-      if (command.parent && (command.config.inheritedByParent ?? false)) {
-        command.config.authority = 5
-        ctx.permissions.inherit(`command.${command.parent.name}`, `command.${command.name}`)
-      }
-      // Remove length to completely discard old authority
-      if (command.config.permissions) {
-        command.config.authority = 5
-        command.config.permissions.forEach(p => ctx.permissions.inherit(p, `command.${command.name}`))
+      if (command.parent) {
+        command._disposables.push(
+          ctx.permissions.depend(`command.${command.name}`, `command.${command.parent.name}`),
+        )
       }
     }
-
-    ctx.schema.extend('command', Schema.object({
-      permissions: Schema.array(String).default([]),
-      inheritedByParent: Schema.boolean().default(false),
-    }), 900)
 
     ctx.$commander._commandList.forEach(inheritPermissions)
     ctx.on('command-added', inheritPermissions)
@@ -97,7 +81,7 @@ export class Permissions {
       })
 
     ctx.command('perm.list').action(() => {
-      return ctx.permissions.list()
+      return ctx.permissions.list().join('\n')
     })
   }
 
