@@ -1,4 +1,4 @@
-import { Command, Context, Dict, Primary, Schema } from 'koishi'
+import { Command, Context, deepEqual, Dict, Logger, Primary, remove, Schema } from 'koishi'
 
 declare module 'koishi' {
 
@@ -12,6 +12,8 @@ interface PermissionGroup {
   name: string
   permissions: string[]
 }
+
+const logger = new Logger('permissions')
 
 function parsePlatform(target: string): [platform: string, id: string] {
   const index = target.indexOf(':')
@@ -34,17 +36,42 @@ export class Permissions {
       autoInc: true,
     })
 
-    function inheritPermissions(command: Command) {
-      command[Context.current] = ctx
-      if (command.parent) {
-        command._disposables.push(
-          ctx.permissions.depend(`command.${command.name}`, `command.${command.parent.name}`),
-        )
-      }
+    ctx.schema.extend('command', Schema.object({
+      authority: Schema.natural().description('指令的权限等级。').default(1),
+      permissions: Schema.array(Schema.string()),
+      dependencies: Schema.array(Schema.string()),
+    }))
+
+    function updateCommand(command: Command | string) {
+      if (typeof command === 'string') command = ctx.$commander.get(command)
+      const name = `command.${command.name}`
+
+      ctx.permissions._depends.delete(name)
+      ctx.permissions._inherits.delete(name)
+
+      remove(ctx.scope.disposables, ctx.permissions.config(name, command.config))
     }
 
-    ctx.$commander._commandList.forEach(inheritPermissions)
-    ctx.on('command-added', inheritPermissions)
+    ctx.$commander._commandList.forEach(updateCommand)
+    ctx.on('command-added', updateCommand)
+
+    ctx.on('config', function _() {
+      console.log('config', arguments, this)
+    })
+
+    ctx.on('internal/before-update', (state, config) => {
+      if (state.runtime.name !== 'CommandManager') return
+      const resolved = state.runtime.config
+      const modified: Record<string, boolean> = Object.create(null)
+      const checkPropertyUpdate = (key: string) => modified[key] ??= !deepEqual(state.config[key], resolved[key])
+
+      for (const key in { ...state.config, ...resolved }) {
+        if (!(key in modified) && checkPropertyUpdate(key)) {
+          logger.debug(`update command config: ${key}`)
+          updateCommand(key)
+        }
+      }
+    })
 
     ctx.command('perm <...perms:string>')
       .option('user', '-u <user:user>')
@@ -54,7 +81,6 @@ export class Permissions {
       .option('group', '-g <group:string>')
       .option('delete', '-d')
       .action(async ({ session, options }, ...perms) => {
-        console.log(options)
         if (options.delete && options.group && !perms.length) {
           await this.deleteGroup(`group.${options.group}`)
           return session.text('.deleted')
@@ -147,7 +173,7 @@ export class Permissions {
 }
 
 export namespace Permissions {
-  export const using = ['database']
+  export const inject = ['database']
 
   export interface Config {}
 

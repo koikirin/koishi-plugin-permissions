@@ -1,7 +1,7 @@
 {
   "name": "@hieuzest/koishi-plugin-permissions",
   "description": "",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -9,13 +9,12 @@
     "dist"
   ],
   "license": "MIT",
-  "scripts": {},
   "keywords": [
     "chatbot",
     "koishi",
     "plugin"
   ],
   "peerDependencies": {
-    "koishi": "^4.14.1"
+    "koishi": "^4.15.7"
   }
 }
