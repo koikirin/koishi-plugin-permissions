@@ -1,20 +1,26 @@
 {
   "name": "@hieuzest/koishi-plugin-permissions",
   "description": "",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
     "lib",
     "dist"
   ],
+  "author": "Hieuzest <girkirin@hotmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koikirin/koishi-plugin-permissions.git"
+  },
+  "homepage": "https://github.com/koikirin/koishi-plugin-permissions",
   "keywords": [
     "chatbot",
     "koishi",
     "plugin"
   ],
   "peerDependencies": {
-    "koishi": "^4.15.7"
+    "koishi": "^4.16.4"
   }
 }
