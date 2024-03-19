@@ -1,11 +1,15 @@
 commands:
   perm:
+    description: |
+      修改权限
+      @user #channel $groupId $groupName
     messages:
       success: 修改成功
       failure: 修改失败
       notfound: 未找到
       deleted: 已删除
       unknown-permission: 失败，包含未知的权限
+      unknown-group: 失败，包含未知的用户组
       permissions: |
         - {target}:
-        {permissions.join('\n')}
+        {permissions?.join('\n')}

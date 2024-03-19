@@ -2,7 +2,7 @@ import { Context, Schema } from 'koishi'
 import { } from '@koishijs/plugin-admin'
 
 function parsePlatform(target: string): [platform: string, id: string] {
-  const index = target.indexOf(':')
+  const index = target.startsWith('sandbox:') ? target.lastIndexOf(':') : target.indexOf(':')
   const platform = target.slice(0, index)
   const id = target.slice(index + 1)
   return [platform, id] as any
@@ -21,13 +21,14 @@ export class Permissions {
       ),
     )
 
-    ctx.command('perm <...perms:string>', { authority: 3 })
+    ctx.command('perm <...perms:string>', { authority: 4 })
       .option('user', '-u <user:user>')
       .option('currentUser', '-U')
       .option('channel', '-c <channel:channel>')
       .option('currentChannel', '-C')
       .option('group', '-g <group:string>')
       .option('delete', '-d')
+      .option('force', '-f')
       .action(async ({ session, options }, ...perms) => {
         if (options.delete && options.group && !perms.length) {
           const group = this.ctx.admin.groups.find(x => x.name === target)
@@ -36,14 +37,21 @@ export class Permissions {
           return session.text('.deleted')
         }
 
-        const target = options.user ? `@${options.user}` : options.currentUser ? `#${session.uid}`
+        const target = options.user ? `@${options.user}` : options.currentUser ? `@${session.uid}`
           : options.channel ? `#${options.channel}` : options.currentChannel ? `#${session.cid}`
-            : options.group ? `group.${options.group}` : null
+            : options.group ? `$${options.group}` : null
         if (!target) return session.execute('perm -h')
         if (perms.length) {
           const set = perms.filter(x => !x.startsWith('~'))
-          const unset = perms.filter(x => x.startsWith('~')).map(x => x.slice(1))
-          if (set.some(x => !this.ctx.permissions.list().includes(x))) {
+            .map(x => x.startsWith('$') ? `group:${this.findGroup(x).id ?? ''}` : x)
+          const unset = perms.filter(x => x.startsWith('~'))
+            .map(x => x.slice(1))
+            .map(x => x.startsWith('$') ? `group:${this.findGroup(x).id ?? ''}` : x)
+          if (!options.force && set.includes('group:') || unset.includes('group:')) {
+            return session.text('.unknown-group')
+          }
+          const permlist = [...this.ctx.permissions.list(), ...ctx.admin.groups.map(x => `group:${x.id}`)]
+          if (!options.force && set.some(x => !permlist.includes(x))) {
             return session.text('.unknown-permission')
           }
           if (await this.modifyPermission(target, set, unset)) {
@@ -56,9 +64,18 @@ export class Permissions {
         }
       })
 
-    ctx.command('perm.list').action(() => {
+    ctx.command('perm.list', { authority: 3 }).action(() => {
       return ctx.permissions.list().join('\n')
     })
+  }
+
+  findGroup(nameOrId: string) {
+    if (nameOrId.startsWith('$')) nameOrId = nameOrId.slice(1)
+    if (isNaN(+nameOrId)) {
+      return this.ctx.admin.groups.find(x => x.name === nameOrId)
+    } else {
+      return this.ctx.admin.groups.find(x => x.id === +nameOrId)
+    }
   }
 
   async listPermission(target: string) {
@@ -69,8 +86,8 @@ export class Permissions {
     } else if (target.startsWith('#')) {
       const channel = await this.ctx.database.getChannel(...parsePlatform(target.slice(1)))
       return channel?.permissions
-    } else {
-      const group = this.ctx.admin.groups.find(x => x.name === target)
+    } else if (target.startsWith('$')) {
+      const group = this.findGroup(target)
       return group?.permissions
     }
   }
@@ -94,23 +111,26 @@ export class Permissions {
         { platform: channel.platform, id: channel.id },
         { permissions: [...permissions] },
       )
-    } else {
-      let group = this.ctx.admin.groups.find(x => x.name === target)
+    } else if (target.startsWith('$')) {
+      let group = this.findGroup(target)
       if (!group) {
-        const id = await this.ctx.admin.createGroup(target)
+        const id = await this.ctx.admin.createGroup(target.slice(1))
         group = this.ctx.admin.groups.find(x => x.id === id)
       }
       const permissions = new Set(group.permissions)
       set.forEach(permissions.add.bind(permissions))
       unset.forEach(permissions.delete.bind(permissions))
       await this.ctx.admin.updateGroup(group.id, [...permissions])
-    }
+    } else return false
     return true
   }
 }
 
 export namespace Permissions {
-  export const inject = ['database']
+  export const inject = {
+    required: ['database'],
+    optional: ['admin'],
+  }
 
   export interface BuiltinPermOptions {
     patterns: string[]
