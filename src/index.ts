@@ -21,7 +21,7 @@ export class Permissions {
       ),
     )
 
-    ctx.command('perm <...perms:string>', { authority: 4 })
+    ctx.command('perm [...perms:string]', { authority: 4 })
       .option('user', '-u <user:user>')
       .option('currentUser', '-U')
       .option('channel', '-c <channel:channel>')
@@ -40,7 +40,7 @@ export class Permissions {
         const target = options.user ? `@${options.user}` : options.currentUser ? `@${session.uid}`
           : options.channel ? `#${options.channel}` : options.currentChannel ? `#${session.cid}`
             : options.group ? `$${options.group}` : null
-        if (!target) return session.execute('perm -h')
+        if (!target) return session.execute('help perm')
         if (perms.length) {
           const set = perms.filter(x => !x.startsWith('~'))
             .map(x => x.startsWith('$') ? `group:${this.findGroup(x).id ?? ''}` : x)
