@@ -1,8 +1,7 @@
 commands:
   perm:
-    description: |
-      修改权限
-      @user #channel $groupId $groupName
+    description: 修改权限
+    usage: "@user #channel $groupId $groupName"
     messages:
       success: 修改成功
       failure: 修改失败
