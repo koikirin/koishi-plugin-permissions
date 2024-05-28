@@ -12,8 +12,8 @@ export class Permissions {
   constructor(public ctx: Context, config: Permissions.Config) {
     ctx.i18n.define('zh', require('./locales/zh'))
 
-    ctx.permissions.provide('session.direct', (_, session) => !!session.isDirect)
-    ctx.permissions.provide('session.notdirect', (_, session) => !session.isDirect)
+    ctx.permissions.provide('session:direct', (_, session) => !!session.isDirect)
+    ctx.permissions.provide('session:indirect', (_, session) => !session.isDirect)
 
     config.builtinPermissions.forEach(
       perm => perm.enabled && perm.patterns.forEach(
